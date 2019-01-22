@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: elk
+  labels:
+    k8s-app: logstash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        k8s-app: logstash
+        app: logstash
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 30
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:6.5.4
+        #args: [
+        #  "-c", "/etc/filebeat.yml",
+        #  "-e",
+        #]
+        env:
+        - name: ELASTICSEARCH_HOST
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_HOST
+        - name: ELASTICSEARCH_PORT
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_PORT
+        - name: ELASTICSEARCH_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_USERNAME
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_PASSWORD
+        - name: ELASTIC_CLOUD_ID
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTIC_CLOUD_ID
+        - name: ELASTIC_CLOUD_AUTH
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTIC_CLOUD_AUTH
+        securityContext:
+          runAsUser: 0
+          # If using Red Hat OpenShift uncomment this:
+          #privileged: true
+        #FIXME OOMKilled
+        #resources:
+        #  limits:
+        #    memory: 200Mi
+        #  requests:
+        #    cpu: 100m
+        #    memory: 100Mi
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/logstash/config/logstash.yml
+          readOnly: true
+          subPath: logstash.yml
+        - name: pipelines
+          mountPath: /usr/share/logstash/pipeline
+          readOnly: true
+        - name: data
+          mountPath: /usr/share/logstash/data
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 0600
+          name: logstash-config
+      #- name: varlibdockercontainers
+      #  hostPath:
+      #    path: /var/lib/docker/containers
+      - name: pipelines
+        configMap:
+          defaultMode: 0600
+          name: logstash-pipelines
+      # data folder stores a registry of read status for all files, so we don't send everything again on pod restart
+      - name: data
+        hostPath:
+          path: /var/lib/logstash-data
+          type: DirectoryOrCreate

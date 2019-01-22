@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-inputs
+  namespace: elk
+  labels:
+    k8s-app: filebeat
+data:
+  kubernetes.yml: |-
+    - type: docker
+      combine_partial: true
+      containers:
+        ids:
+          - "*"
+        # all, stdout, or stderr
+        # TODO seperate stdout and stderr?
+        stream: "all"
+        path: "/var/lib/docker/containers"
+
+      # https://www.elastic.co/guide/en/beats/filebeat/current/defining-processors.html
+      # https://www.elastic.co/guide/en/beats/filebeat/current/filtering-and-enhancing-data.html
+      processors:
+        #- add_cloud_metadata: ~
+        #- add_kubernetes_metadata:
+        #    in_cluster: true
+
+        # Decode string fields to json root
+        # NOTE: This should cooperate with kibana index pattern for index elasticsearch
+        # https://www.elastic.co/guide/en/beats/filebeat/current/decode-json-fields.html
+        - decode_json_fields:
+            fields: ["message", "severity", "timestamp"]
+            process_array: false
+            max_depth: 1
+            target: "decoded"
+            overwrite_keys: false
+
+      #json:
+      #  keys_under_root: false
+      #  add_error_key: false
+      #  message_key: "log"
+
+      # Add tags to output
+      #tags: ["json"]
+      #include_lines: ['sometext']
+      #exclude_lines: ['^DBG']
+      #exclude_files: ['\.gz$']
+
+      # Debug
+      #output.console.pretty: true

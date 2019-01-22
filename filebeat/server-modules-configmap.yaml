@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: server-filebeat-modules
+  namespace: elk
+  labels:
+    k8s-app: filebeat
+data:
+  # System log on GKE nodes are consumed by fluentd
+  #system.yml: |-
+  #  - module: system
+  #    # Syslog
+  #    syslog:
+  #      enabled: true
+  #      #var.paths
+  #      #var.convert_timezone: false
+  #      
+  #    # Authorization logs
+  #    auth:
+  #      enables: true
+  #      #var.paths
+  #      #var.convert_timezone: false

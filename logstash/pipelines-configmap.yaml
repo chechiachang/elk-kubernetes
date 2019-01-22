@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipelines
+  namespace: elk
+  labels:
+    k8s-app: logstash
+data:
+  # Nginx Template
+  # https://www.elastic.co/guide/en/logstash/current/logstash-config-for-filebeat-modules.html#parsing-nginx
+  nginx.conf: |
+    input {
+      beats {
+        # The lisening port of logstash
+        port => 5044 
+        host => "0.0.0.0"
+      }
+    }
+
+    filter {
+
+      # Nginx-ingress controller example
+      if [kubernetes][container][name] == "nginx-ingress-controller" {
+
+        # Parse message with grok
+        # Use grok debugger in kibana -> dev_tools -> grok_debugger, or other online grok debugger to edit match pattern
+        grok {
+          match => { "message" => "%{IPORHOST:[nginx][access][remote_ip]} - \[%{IPORHOST:[nginx][access][remote_ip_list]}\] - %{DATA:[nginx][access][user_name]} \[%{HTTPDATE:[nginx][access][time]}\] \"%{WORD:[nginx][access][method]} %{DATA:[nginx][access][url]}\?%{DATA:[nginx][access][url_params]} HTTP/%{NUMBER:[nginx][access][http_version]}\" %{NUMBER:[nginx][access][response_code]} %{NUMBER:[nginx][access][body_sent][bytes]} \"%{DATA:[nginx][access][referrer]}\" \"%{DATA:[nginx][access][agent]}\" %{NUMBER:[nginx][access][request_length]} %{NUMBER:[nginx][access][request_time]} \[%{DATA:[nginx][access][proxy_upstream_name]}\] %{DATA:[nginx][access][upstream_addr]} %{NUMBER:[nginx][access][upstream_response_length]} %{NUMBER:[nginx][access][upstream_response_time]} %{NUMBER:[nginx][access][upstream_status]} %{DATA:[nginx][access][req_id]}" }
+          #remove_field => "message"
+        }
+        mutate {
+          add_field => { "read_timestamp" => "%{@timestamp}" }
+        }
+        # Add fileset.module:nginx to fit nginx dashboard
+        mutate {
+          add_field => { "[fileset][module]" => "nginx"}
+        }
+        mutate {
+          add_field => { "[fileset][name]" => "access"}
+        }
+        date {
+          match => [ "[nginx][access][time]", "dd/MMM/YYYY:H:m:s Z" ]
+          remove_field => "[nginx][access][time]"
+        }
+        kv {
+          source => "[nginx][access][url_params]"
+          field_split => "&"
+        }
+        useragent {
+          source => "[nginx][access][agent]"
+          target => "[nginx][access][user_agent]"
+          remove_field => "[nginx][access][agent]"
+        }
+        geoip {
+          source => "[nginx][access][remote_ip]"
+          target => "[nginx][access][geoip]"
+          #fields => ["country_name","city_name","real_region_name","latitude","longitude","ip","location"]
+        }
+
+        # ==============
+        # Remove message
+        # ==============
+
+        if [nginx][access][url] {
+          mutate {
+            # source:/var/lib/docker/containers/6e608bfc0a437c038a1dbdf2e3d28619648b58a1d1ac58635f8178fc5f871109/6e608bfc0a437c038a1dbdf2e3d28619648b58a1d1ac58635f8178fc5f871109-json.log
+            remove_field => "[source]"
+            # Origin message
+            remove_field => "[message]"
+            #add_field => { "[nginx][access][message]" => "[message]"}
+            remove_field => "[nginx][access][message]"
+            # url_params:client_id=1d5ffd378296c154d3e32e5890d6f4eb&timestamp=1546849955&nonce=9a52e3e6283f2a9263e5301b6724e2c0d723def860c4724c9121470152a42318
+            remove_field => "[nginx][access][url_params]"
+          }
+        }
+      } # nginx-ingress-controller
+
+    
+    } # filter
+
+    # Output data to remote elasticsearch
+    output {
+      elasticsearch {
+        hosts => ["https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
+        user => "${ELASTICSEARCH_USERNAME}"
+        password => "${ELASTICSEARCH_PASSWORD}"
+        index => "%{[@metadata][beat]}-%{[@metadata][version]}-%{+YYYY.MM.dd}"
+        manage_template => false
+      }
+    }

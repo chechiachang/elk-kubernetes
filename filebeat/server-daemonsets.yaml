@@ -1,0 +1,120 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: server-filebeat
+  namespace: elk
+  labels:
+    k8s-app: filebeat
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: filebeat
+        app: server-filebeat
+    spec:
+      serviceAccountName: filebeat
+      terminationGracePeriodSeconds: 30
+      # Run filebeat with app-server
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - app-server
+            topologyKey: "kubernetes.io/hostname"
+            namespaces:
+              - default
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:6.5.4
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        env:
+        - name: ELASTICSEARCH_HOST
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_HOST
+        - name: ELASTICSEARCH_PORT
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_PORT
+        - name: ELASTICSEARCH_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_USERNAME
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_PASSWORD
+        - name: ELASTIC_CLOUD_ID
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTIC_CLOUD_ID
+        - name: ELASTIC_CLOUD_AUTH
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTIC_CLOUD_AUTH
+        securityContext:
+          runAsUser: 0
+          # If using Red Hat OpenShift uncomment this:
+          #privileged: true
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        - name: inputs
+          mountPath: /usr/share/filebeat/inputs.d
+          readOnly: true
+        - name: modules
+          mountPath: /usr/share/filebeat/modules.d
+          readOnly: true
+        - name: data
+          mountPath: /usr/share/filebeat/data
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 0600
+          name: server-filebeat-config
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: inputs
+        configMap:
+          defaultMode: 0600
+          name: filebeat-inputs
+      - name: modules
+        configMap:
+          defaultMode: 0600
+          name: server-filebeat-modules
+      # data folder stores a registry of read status for all files, so we don't send everything again on a Filebeat pod restart
+      - name: data
+        hostPath:
+          path: /var/lib/filebeat-data
+          type: DirectoryOrCreate

@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  # Node Metrics, from kubelet
+  name: metricbeat-daemonset-modules
+  namespace: elk
+  labels:
+    k8s-app: metricbeat
+    kubernetes.io/cluster-service: "true"
+data:
+  # https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-module-system.html
+  system.yml: |-
+    - module: system
+      enabled: true
+      period: 10m            # Don't need close monitoring on GKE nodes.
+      metricsets:
+        - cpu               # Cpu status and usage
+        - load              # System load avaerage, uptime
+        - memory            # Memory available and usage
+        - network           # Network traffics
+        #- process          # Monitor each process
+        #- process_summary  # Summary of status of processes
+        #- core             # State of CPU cores
+        #- diskio            # Diskio
+        #- socket           # State of sockets
+      processes: ['.*']
+      process.include_top_n:
+        by_cpu: 5           # include top 5 processes by CPU
+        by_memory: 5        # include top 5 processes by memory
+
+    #- module: system
+    #  period: 1m
+    #  metricsets:
+    #    - filesystem       # Filesystem of Node.
+    #    - fsstat           # Overall fs status, usage, free.
+    #  processors:
+    #  - drop_event.when.regexp:
+    #      system.filesystem.mount_point: '^/(sys|cgroup|proc|dev|etc|host|lib)($|/)'
+
+  # https://www.elastic.co/guide/en/beats/metricbeat/current/metricbeat-module-kubernetes.html
+  kubernetes.yml: |-
+    - module: kubernetes
+      enabled: true
+      period: 10m
+      metricsets:           # From kubelet.
+        - node              # Overall node status of Node.
+        - system            # System usage
+        - pod               
+        - container
+        - volume
+      add_metadata: true
+      in_cluster: true
+      hosts: ["localhost:10255"]
