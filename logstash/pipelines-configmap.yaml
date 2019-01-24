@@ -19,23 +19,22 @@ data:
 
     filter {
 
-      # Nginx-ingress controller example
       if [kubernetes][container][name] == "nginx-ingress-controller" {
 
         # Parse message with grok
-        # Use grok debugger in kibana -> dev_tools -> grok_debugger, or other online grok debugger to edit match pattern
+        # Use grok debugger in kibana -> dev_tools -> grok_debugger
         grok {
-          match => { "message" => "%{IPORHOST:[nginx][access][remote_ip]} - \[%{IPORHOST:[nginx][access][remote_ip_list]}\] - %{DATA:[nginx][access][user_name]} \[%{HTTPDATE:[nginx][access][time]}\] \"%{WORD:[nginx][access][method]} %{DATA:[nginx][access][url]}\?%{DATA:[nginx][access][url_params]} HTTP/%{NUMBER:[nginx][access][http_version]}\" %{NUMBER:[nginx][access][response_code]} %{NUMBER:[nginx][access][body_sent][bytes]} \"%{DATA:[nginx][access][referrer]}\" \"%{DATA:[nginx][access][agent]}\" %{NUMBER:[nginx][access][request_length]} %{NUMBER:[nginx][access][request_time]} \[%{DATA:[nginx][access][proxy_upstream_name]}\] %{DATA:[nginx][access][upstream_addr]} %{NUMBER:[nginx][access][upstream_response_length]} %{NUMBER:[nginx][access][upstream_response_time]} %{NUMBER:[nginx][access][upstream_status]} %{DATA:[nginx][access][req_id]}" }
-          #remove_field => "message"
+          match => { "message" => "%{IPORHOST:[nginx][access][remote_ip]} - \[%{IPORHOST:[nginx][access][remote_ip_list]}\] - %{DATA:[nginx][access][user_name]} \[%{HTTPDATE:[nginx][access][time]}\] \"%{WORD:[nginx][access][method]} %{DATA:[nginx][access][request_url]} HTTP/%{NUMBER:[nginx][access][http_version]}\" %{NUMBER:[nginx][access][response_code]} %{NUMBER:[nginx][access][body_sent][bytes]} \"%{DATA:[nginx][access][referrer]}\" \"%{DATA:[nginx][access][agent]}\" %{NUMBER:[nginx][access][request_length]} %{NUMBER:[nginx][access][request_time]} \[%{DATA:[nginx][access][proxy_upstream_name]}\] %{DATA:[nginx][access][upstream_addr]} %{NUMBER:[nginx][access][upstream_response_length]} %{NUMBER:[nginx][access][upstream_response_time]} %{NUMBER:[nginx][access][upstream_status]} %{DATA:[nginx][access][req_id]}" }
+        }
+        # Match url parameters if has params
+        grok {
+          match => { "[nginx][access][request_url]" => "%{DATA:[nginx][access][url]}\?%{DATA:[nginx][access][url_params]}" }
         }
         mutate {
+          remove_field => "[nginx][access][request_url]"
           add_field => { "read_timestamp" => "%{@timestamp}" }
-        }
-        # Add fileset.module:nginx to fit nginx dashboard
-        mutate {
+          # Add fileset.module:nginx to fit nginx dashboard
           add_field => { "[fileset][module]" => "nginx"}
-        }
-        mutate {
           add_field => { "[fileset][name]" => "access"}
         }
         date {
@@ -78,7 +77,6 @@ data:
     
     } # filter
 
-    # Output data to remote elasticsearch
     output {
       elasticsearch {
         hosts => ["https://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}"]
