@@ -1,0 +1,150 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: &app-name filebeat
+  namespace: elk
+  labels:
+    app.kubernetes.io/name: *app-name
+    app: *app-name
+    component: filebeat
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: *app-name
+      app: *app-name
+      component: filebeat
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: *app-name
+        app: *app-name
+        component: filebeat
+    spec:
+      serviceAccountName: elk
+      terminationGracePeriodSeconds: 30
+      # Run filebeat with machix-server
+      #affinity:
+      #  podAffinity:
+      #    requiredDuringSchedulingIgnoredDuringExecution:
+      #    - labelSelector:
+      #        matchExpressions:
+      #        - key: app
+      #          operator: In
+      #          values:
+      #          - machix
+      #        - key: component
+      #          operator: In
+      #          values:
+      #          - api-server
+      #      topologyKey: "kubernetes.io/hostname"
+      #      namespaces:
+      #        - default
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:7.3.1
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: ELASTICSEARCH_PROTOCOL
+          valueFrom:
+            configMapKeyRef:
+              name: elk-config
+              key: ELASTICSEARCH_PROTOCOL
+        - name: ELASTICSEARCH_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: elk-config
+              key: ELASTICSEARCH_HOST
+        - name: ELASTICSEARCH_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: elk-config
+              key: ELASTICSEARCH_PORT
+        - name: ELASTICSEARCH_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_ELASTIC_USERNAME
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELASTICSEARCH_ELASTIC_PASSWORD
+        - name: KIBANA_PROTOCOL
+          valueFrom:
+            configMapKeyRef:
+              name: elk-config
+              key: KIBANA_PROTOCOL
+        - name: KIBANA_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: elk-config
+              key: KIBANA_HOST
+        - name: KIBANA_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: elk-config
+              key: KIBANA_PORT
+        securityContext:
+          runAsUser: 0
+          # If using Red Hat OpenShift uncomment this:
+          #privileged: true
+        resources:
+          requests:
+            cpu: 20m
+            memory: 100Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/filebeat.yml
+          readOnly: true
+          subPath: filebeat.yml
+        #- name: inputs
+        #  mountPath: /usr/share/filebeat/inputs.d
+        #  readOnly: true
+        #- name: modules
+        #  mountPath: /usr/share/filebeat/modules.d
+        #  readOnly: true
+        - name: data
+          mountPath: /usr/share/filebeat/data
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+        - name: elk-client-certificates
+          mountPath: /etc/elk/certificates
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          defaultMode: 0600
+          name: filebeat-config
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: varlog
+        hostPath:
+          path: /var/log
+      #- name: inputs
+      #  configMap:
+      #    defaultMode: 0600
+      #    name: filebeat-inputs
+      #- name: modules
+      #  configMap:
+      #    defaultMode: 0600
+      #    name: server-filebeat-modules
+      # data folder stores a registry of read status for all files, so we don't send everything again on a Filebeat pod restart
+      - name: data
+        hostPath:
+          path: /var/lib/filebeat-data
+          type: DirectoryOrCreate
+      - name: elk-client-certificates
+        secret:
+          secretName: elk-client-certificates
