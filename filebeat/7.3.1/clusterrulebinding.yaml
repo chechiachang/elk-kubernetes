@@ -1,22 +1,22 @@
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
-  name: filebeat
+  name: elk
 subjects:
 - kind: ServiceAccount
-  name: filebeat
+  name: elk
   namespace: elk
 roleRef:
   kind: ClusterRole
-  name: filebeat
+  name: elk
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
-  name: filebeat
+  name: elk
   labels:
-    k8s-app: filebeat
+    k8s-app: elk
 rules:
 - apiGroups: [""] # "" indicates the core API group
   resources:
@@ -30,7 +30,7 @@ rules:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: filebeat
+  name: elk
   namespace: elk
   labels:
-    k8s-app: filebeat
+    k8s-app: elk
