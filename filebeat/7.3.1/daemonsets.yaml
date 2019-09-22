@@ -22,7 +22,7 @@ spec:
     spec:
       serviceAccountName: elk
       terminationGracePeriodSeconds: 30
-      # Run filebeat with machix-server
+      # Run filebeat with my-app
       #affinity:
       #  podAffinity:
       #    requiredDuringSchedulingIgnoredDuringExecution:
@@ -31,7 +31,7 @@ spec:
       #        - key: app
       #          operator: In
       #          values:
-      #          - machix
+      #          - my-app
       #        - key: component
       #          operator: In
       #          values:
