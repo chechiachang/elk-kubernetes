@@ -50,4 +50,3 @@ vim /etc/metricbeat/module.d/mysql.yml
 sudo service metricbeat restart
 ```
 
-
