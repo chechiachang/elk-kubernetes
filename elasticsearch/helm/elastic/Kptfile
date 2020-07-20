@@ -1,0 +1,11 @@
+apiVersion: kpt.dev/v1alpha1
+kind: Kptfile
+metadata:
+    name: elastic
+upstream:
+    type: git
+    git:
+        commit: 8da8cdc71bf3e1ddaec559d4ab827e73b35e33a1
+        repo: git@github.com:elastic/helm-charts
+        directory: /
+        ref: 7.8.0

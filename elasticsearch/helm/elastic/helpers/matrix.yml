@@ -1,0 +1,38 @@
+CHART:
+  - elasticsearch
+  - kibana
+  - filebeat
+  - metricbeat
+  - logstash
+ES_SUITE:
+  - default
+  - config
+  - multi
+  - oss
+  - security
+  - upgrade
+KIBANA_SUITE:
+  - default
+  - oss
+  - security
+FILEBEAT_SUITE:
+  - default
+  - oss
+  - security
+METRICBEAT_SUITE:
+  - default
+  - oss
+  - security
+LOGSTASH_SUITE:
+  - default
+  - oss
+  - elasticsearch
+  - security
+APM_SERVER_SUITE:
+  - default
+  - oss
+  - security
+KUBERNETES_VERSION:
+  - '1.14'
+  - '1.15'
+  - '1.16'

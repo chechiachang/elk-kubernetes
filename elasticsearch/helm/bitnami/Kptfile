@@ -1,0 +1,11 @@
+apiVersion: kpt.dev/v1alpha1
+kind: Kptfile
+metadata:
+    name: bitnami
+upstream:
+    type: git
+    git:
+        commit: cab37bb32235f0a74c0ef7f7dbe5a7a7425ee3fe
+        repo: git@github.com:bitnami/charts
+        directory: /bitnami/elasticsearch
+        ref: master
