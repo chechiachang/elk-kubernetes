@@ -60,15 +60,15 @@ podAnnotations: {}
 # additionals labels
 labels: {}
 
-esJavaOpts: "-Xmx1g -Xms1g"
+esJavaOpts: "-Xmx2g -Xms2g"
 
 resources:
   requests:
-    cpu: "1000m"
-    memory: "2Gi"
-  #limits:
-  #  cpu: "1000m"
-  #  memory: "2Gi"
+    cpu: "500m"
+    memory: "3Gi"
+  limits:
+    cpu: "2000m"
+    memory: "10Gi"
 
 initResources: {}
   # limits:
@@ -237,12 +237,13 @@ tolerations:
 # Only enable this if you have security enabled on your cluster
 ingress:
   enabled: false
-  annotations: {}
+  annotations:
+    kubernetes.io/ingress.class: traefik
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   path: /
   hosts:
-    - chart-example.local
+    - sit-elasticsearch.gcp.silkrode.com.tw
   tls: []
   #  - secretName: chart-example-tls
   #    hosts:
